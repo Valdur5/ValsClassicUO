@@ -70,7 +70,7 @@ namespace ClassicUO.Game.Managers
             }
         }
 
-        public static void Save(string account, string server, string name)
+        public static void Save(string account, string server, string name, uint serial = 0)
         {
             LastCharacterInfo lastChar = LastCharacters.FirstOrDefault(c => c.AccountName.Equals(account) && c.ServerName == server);
 
@@ -83,6 +83,7 @@ namespace ClassicUO.Game.Managers
             if (lastChar != null)
             {
                 lastChar.LastCharacterName = name;
+                lastChar.Serial = serial;
             }
             else
             {
@@ -90,7 +91,8 @@ namespace ClassicUO.Game.Managers
                 {
                     ServerName = server,
                     LastCharacterName = name,
-                    AccountName = account
+                    AccountName = account,
+                    Serial = serial
                 });
             }
 
@@ -126,5 +128,6 @@ namespace ClassicUO.Game.Managers
         public string AccountName { get; set; }
         public string ServerName { get; set; }
         public string LastCharacterName { get; set; }
+        public uint Serial { get; set; }
     }
 }

@@ -746,9 +746,11 @@ namespace ClassicUO.Network
 
         private static void EnterWorld(ref StackDataReader p)
         {
+            uint serial = p.ReadUInt32BE();
             if (ProfileManager.CurrentProfile == null)
             {
                 string lastChar = LastCharacterManager.GetLastCharacter(LoginScene.Account, World.ServerName);
+                LastCharacterManager.Save(LoginScene.Account, World.ServerName, lastChar, serial);
                 ProfileManager.Load(World.ServerName, LoginScene.Account, lastChar);
             }
 
@@ -757,7 +759,7 @@ namespace ClassicUO.Network
                 World.Clear();
             }
 
-            World.Mobiles.Add(World.Player = new PlayerMobile(p.ReadUInt32BE()));
+            World.Mobiles.Add(World.Player = new PlayerMobile(serial));
             p.Skip(4);
             World.Player.Graphic = p.ReadUInt16BE();
             World.Player.CheckGraphicChange();
