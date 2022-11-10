@@ -63,7 +63,7 @@ namespace ClassicUO.Game.UI.Gumps.Login
             LoginScene loginScene = Client.Game.GetScene<LoginScene>();
             
             string lastCharName = LastCharacterManager.GetLastCharacter(LoginScene.Account, World.ServerName);
-            string lastSelected = loginScene.Characters.FirstOrDefault(o => o == lastCharName);
+            string lastSelected = loginScene.Characters.FirstOrDefault(o => o.RawName == lastCharName).RawName;
 
             LockedFeatureFlags f = World.ClientLockedFeatures.Flags;
             CharacterListFlags ff = World.ClientFeatures.Flags;
@@ -112,7 +112,7 @@ namespace ClassicUO.Game.UI.Gumps.Login
             
             for (int i = 0, valid = 0; i < loginScene.Characters.Length; i++)
             {
-                string character = loginScene.Characters[i];
+                string character = loginScene.Characters[i].RawName;
 
                 if (!string.IsNullOrEmpty(character))
                 {
@@ -195,7 +195,14 @@ namespace ClassicUO.Game.UI.Gumps.Login
         {
             if (scene.Characters != null)
             {
-                int empty = scene.Characters.Count(string.IsNullOrEmpty);
+                int empty = 0;
+                foreach(Character c in scene.Characters)
+                {
+                    if(c == null || string.IsNullOrEmpty(c.RawName))
+                    {
+                        empty++;
+                    }
+                }
 
                 if (empty >= 0 && scene.Characters.Length - empty < World.ClientFeatures.MaxChars)
                 {
@@ -246,7 +253,7 @@ namespace ClassicUO.Game.UI.Gumps.Login
 
         private void DeleteCharacter(LoginScene loginScene)
         {
-            string charName = loginScene.Characters[_selectedCharacter];
+            string charName = loginScene.Characters[_selectedCharacter].RawName;
 
             if (!string.IsNullOrEmpty(charName))
             {
@@ -296,7 +303,7 @@ namespace ClassicUO.Game.UI.Gumps.Login
         {
             LoginScene loginScene = Client.Game.GetScene<LoginScene>();
 
-            if (loginScene.Characters.Length > index && !string.IsNullOrEmpty(loginScene.Characters[index]))
+            if (loginScene.Characters.Length > index && loginScene.Characters[index] != null && !string.IsNullOrEmpty(loginScene.Characters[index].RawName))
             {
                 loginScene.SelectCharacter(index);
             }

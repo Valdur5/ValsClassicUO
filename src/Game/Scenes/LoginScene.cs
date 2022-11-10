@@ -92,7 +92,7 @@ namespace ClassicUO.Game.Scenes
 
         public CityInfo[] Cities { get; set; }
 
-        public string[] Characters { get; private set; }
+        public Character[] Characters { get; private set; }
 
         public string PopupMessage { get; set; }
 
@@ -417,10 +417,11 @@ namespace ClassicUO.Game.Scenes
         {
             if (CurrentLoginStep == LoginSteps.CharacterSelection)
             {
-                LastCharacterManager.Save(Account, World.ServerName, Characters[index]);
+                Character c = Characters[Convert.ToInt32(index)];
+                LastCharacterManager.Save(Account, World.ServerName, c.RawName, c.Serial);
 
                 CurrentLoginStep = LoginSteps.EnteringBritania;
-                NetClient.Socket.Send_SelectCharacter(index, Characters[index], NetClient.Socket.LocalIP);
+                NetClient.Socket.Send_SelectCharacter(index,c.RawName, NetClient.Socket.LocalIP);
             }
         }
 
@@ -438,7 +439,7 @@ namespace ClassicUO.Game.Scenes
 
             for (; i < Characters.Length; i++)
             {
-                if (string.IsNullOrEmpty(Characters[i]))
+                if (Characters[i] == null || string.IsNullOrEmpty(Characters[i].RawName))
                 {
                     break;
                 }
@@ -659,11 +660,11 @@ namespace ClassicUO.Game.Scenes
 
             for (byte i = 0; i < Characters.Length; i++)
             {
-                if (Characters[i].Length > 0)
+                if (Characters[i] != null && Characters[i].RawName.Length > 0)
                 {
                     haveAnyCharacter = true;
 
-                    if (Characters[i] == lastCharName)
+                    if (Characters[i].RawName == lastCharName)
                     {
                         charToSelect = i;
 
@@ -727,13 +728,16 @@ namespace ClassicUO.Game.Scenes
         private void ParseCharacterList(ref StackDataReader p)
         {
             int count = p.ReadUInt8();
-            Characters = new string[count];
+            Characters = new Character[count];
 
             for (ushort i = 0; i < count; i++)
             {
-                Characters[i] = p.ReadASCII(30).TrimEnd('\0');
-
-                p.Skip(30);
+                Character c = new Character
+                {
+                    RawName = p.ReadASCII(30).TrimEnd('\0'),
+                    Serial = p.ReadUInt32BE()
+                };
+                Characters[i] = c;
             }
         }
 
