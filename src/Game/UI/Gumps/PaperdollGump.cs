@@ -186,16 +186,32 @@ namespace ClassicUO.Game.UI.Gumps
                     }
                 );
 
-                // QUESTS BUTTON
-                Add
-                (
-                    new Button((int) Buttons.Quests, 0x57b5, 0x57b7, 0x57b6)
-                    {
-                        X = 185,
-                        Y = 44 + 27 * 3,
-                        ButtonAction = ButtonAction.Activate
-                    }
-                );
+                if (Client.Version < ClientVersion.CV_500A)
+                {
+                    // JOURNAL BUTTON
+                    Add
+                    (
+                        new Button((int)Buttons.Journal, 0x7dc, 0x7dd, 0x7de)
+                        {
+                            X = 185,
+                            Y = 44 + 27 * 3,
+                            ButtonAction = ButtonAction.Activate
+                        }
+                    );
+                }
+                else
+                {
+                    // QUESTS BUTTON
+                    Add
+                    (
+                        new Button((int)Buttons.Quests, 0x57b5, 0x57b7, 0x57b6)
+                        {
+                            X = 185,
+                            Y = 44 + 27 * 3,
+                            ButtonAction = ButtonAction.Activate
+                        }
+                    );
+                }
 
                 // SKILLS BUTTON
                 Add
@@ -378,7 +394,7 @@ namespace ClassicUO.Game.UI.Gumps
             Add(_paperDollInteractable);
 
             // Name and title
-            _titleLabel = new Label("", false, 0x0386, 185)
+            _titleLabel = new Label("", false, 0x0386, 185, font: 1)
             {
                 X = 39,
                 Y = 262
@@ -455,7 +471,7 @@ namespace ClassicUO.Game.UI.Gumps
             }
         }
 
-        public override void Update(double totalTime, double frameTime)
+        public override void Update()
         {
             if (IsDisposed)
             {
@@ -481,22 +497,22 @@ namespace ClassicUO.Game.UI.Gumps
                 _warModeBtn.ButtonGraphicOver = btngumps[2];
             }
 
-            base.Update(totalTime, frameTime);
+            base.Update();
 
 
             if (_paperDollInteractable != null && (CanLift || LocalSerial == World.Player.Serial))
             {
                 bool force_false = SelectedObject.Object is Item item && (item.Layer == Layer.Backpack || item.ItemData.IsContainer);
 
-                if (_paperDollInteractable.HasFakeItem && !ItemHold.Enabled || force_false)
+                if (_paperDollInteractable.HasFakeItem && !Client.Game.GameCursor.ItemHold.Enabled || force_false)
                 {
                     _paperDollInteractable.SetFakeItem(false);
                 }
-                else if (!_paperDollInteractable.HasFakeItem && ItemHold.Enabled && !ItemHold.IsFixedPosition && UIManager.MouseOverControl?.RootParent == this)
+                else if (!_paperDollInteractable.HasFakeItem && Client.Game.GameCursor.ItemHold.Enabled && !Client.Game.GameCursor.ItemHold.IsFixedPosition && UIManager.MouseOverControl?.RootParent == this)
                 {
-                    if (ItemHold.ItemData.AnimID != 0)
+                    if (Client.Game.GameCursor.ItemHold.ItemData.AnimID != 0)
                     {
-                        if (mobile != null && mobile.FindItemByLayer((Layer) ItemHold.ItemData.Layer) == null)
+                        if (mobile != null && mobile.FindItemByLayer((Layer)Client.Game.GameCursor.ItemHold.ItemData.Layer) == null)
                         {
                             _paperDollInteractable.SetFakeItem(true);
                         }
@@ -517,7 +533,7 @@ namespace ClassicUO.Game.UI.Gumps
             {
                 Mobile container = World.Mobiles.Get(LocalSerial);
 
-                if (ItemHold.Enabled)
+                if (Client.Game.GameCursor.ItemHold.Enabled)
                 {
                     if (CanLift || LocalSerial == World.Player.Serial)
                     {
@@ -525,7 +541,7 @@ namespace ClassicUO.Game.UI.Gumps
                         {
                             GameActions.DropItem
                             (
-                                ItemHold.Serial,
+                                Client.Game.GameCursor.ItemHold.Serial,
                                 0xFFFF,
                                 0xFFFF,
                                 0,
@@ -536,9 +552,9 @@ namespace ClassicUO.Game.UI.Gumps
                         }
                         else
                         {
-                            if (ItemHold.ItemData.IsWearable)
+                            if (Client.Game.GameCursor.ItemHold.ItemData.IsWearable)
                             {
-                                Item equipment = container.FindItemByLayer((Layer) ItemHold.ItemData.Layer);
+                                Item equipment = container.FindItemByLayer((Layer)Client.Game.GameCursor.ItemHold.ItemData.Layer);
 
                                 if (equipment == null)
                                 {
@@ -612,7 +628,7 @@ namespace ClassicUO.Game.UI.Gumps
                 UpdateTitle(mobile.Title);
             }
 
-            _paperDollInteractable.Update();
+            _paperDollInteractable.RequestUpdate();
 
             if (mobile != null)
             {
@@ -627,7 +643,7 @@ namespace ClassicUO.Game.UI.Gumps
 
         public override void OnButtonClick(int buttonID)
         {
-            if (ItemHold.Enabled && !ItemHold.IsFixedPosition)
+            if (Client.Game.GameCursor.ItemHold.Enabled && !Client.Game.GameCursor.ItemHold.IsFixedPosition)
             {
                 OnMouseUp(0, 0, MouseButtonType.Left);
 
@@ -648,6 +664,11 @@ namespace ClassicUO.Game.UI.Gumps
 
                 case Buttons.LogOut:
                     Client.Game.GetScene<GameScene>()?.RequestQuitGame();
+
+                    break;
+
+                case Buttons.Journal:
+                    GameActions.OpenJournal();
 
                     break;
 
@@ -732,6 +753,7 @@ namespace ClassicUO.Game.UI.Gumps
             Help,
             Options,
             LogOut,
+            Journal,
             Quests,
             Skills,
             Guild,
@@ -785,7 +807,7 @@ namespace ClassicUO.Game.UI.Gumps
 
             public Layer Layer { get; }
 
-            public override void Update(double totalTime, double frameTime)
+            public override void Update()
             {
                 Item item = World.Items.Get(LocalSerial);
 
@@ -831,7 +853,7 @@ namespace ClassicUO.Game.UI.Gumps
                     }
                 }
 
-                base.Update(totalTime, frameTime);
+                base.Update();
             }
 
             private class ItemGumpFixed : ItemGump

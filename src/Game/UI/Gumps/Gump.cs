@@ -53,7 +53,6 @@ namespace ClassicUO.Game.UI.Gumps
             AcceptKeyboardInput = false;
         }
 
-        public bool BlockMovement { get; set; }
 
         public bool CanBeSaved => GumpType != Gumps.GumpType.None;
 
@@ -61,17 +60,10 @@ namespace ClassicUO.Game.UI.Gumps
 
         public bool InvalidateContents { get; set; }
 
-
-        public override bool CanMove
-        {
-            get => !BlockMovement && base.CanMove;
-            set => base.CanMove = value;
-        }
-
         public uint MasterGumpSerial { get; set; }
 
 
-        public override void Update(double totalTime, double frameTime)
+        public override void Update()
         {
             if (InvalidateContents)
             {
@@ -84,7 +76,7 @@ namespace ClassicUO.Game.UI.Gumps
                 ActivePage = 1;
             }
 
-            base.Update(totalTime, frameTime);
+            base.Update();
         }
 
         public override void Dispose()

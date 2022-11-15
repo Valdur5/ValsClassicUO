@@ -525,16 +525,16 @@ namespace ClassicUO.Game.GameObjects
                 graphic = mobile.GetGraphicForAnimation();
             }
 
-            if (graphic >= Constants.MAX_ANIMATIONS_DATA_INDEX_COUNT)
+            if (graphic >= AnimationsLoader.Instance.MAX_ANIMATIONS_DATA_INDEX_COUNT)
             {
                 return 0;
             }
 
 
-            ANIMATION_GROUPS_TYPE originalType = AnimationsLoader.Instance.DataIndex[graphic].Type;
+            ANIMATION_GROUPS_TYPE originalType = AnimationsLoader.Instance.GetAnimType(graphic);
             AnimationsLoader.Instance.ConvertBodyIfNeeded(ref graphic, isParent);
-            ANIMATION_GROUPS_TYPE type = AnimationsLoader.Instance.DataIndex[graphic].Type;
-            ANIMATION_FLAGS flags = AnimationsLoader.Instance.DataIndex[graphic].Flags;
+            ANIMATION_GROUPS_TYPE type = AnimationsLoader.Instance.GetAnimType(graphic);
+            ANIMATION_FLAGS flags = AnimationsLoader.Instance.GetAnimFlags(graphic);
 
             bool uop = (flags & ANIMATION_FLAGS.AF_USE_UOP_ANIMATION) != 0;
 
@@ -1449,7 +1449,7 @@ namespace ClassicUO.Game.GameObjects
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static byte GetObjectNewAnimation(Mobile mobile, ushort type, ushort action, byte mode)
         {
-            if (mobile.Graphic >= Constants.MAX_ANIMATIONS_DATA_INDEX_COUNT)
+            if (mobile.Graphic >= AnimationsLoader.Instance.MAX_ANIMATIONS_DATA_INDEX_COUNT)
             {
                 return 0;
             }
@@ -1474,8 +1474,8 @@ namespace ClassicUO.Game.GameObjects
 
                 case 8: return GetObjectNewAnimationType_8(mobile, action, mode);
 
-                case 9:
-                case 10: return GetObjectNewAnimationType_9_10(mobile, action, mode);
+                case 9: return GetObjectNewAnimationType_9(mobile, action, mode);
+                case 10: return GetObjectNewAnimationType_10(mobile, action, mode);
 
                 case 11: return GetObjectNewAnimationType_11(mobile, action, mode);
             }
@@ -1517,12 +1517,12 @@ namespace ClassicUO.Game.GameObjects
         {
             if (action <= 10)
             {
-                IndexAnimation ia = AnimationsLoader.Instance.DataIndex[mobile.Graphic];
+                ANIMATION_FLAGS flags = AnimationsLoader.Instance.GetAnimFlags(mobile.Graphic);
                 ANIMATION_GROUPS_TYPE type = ANIMATION_GROUPS_TYPE.MONSTER;
 
-                if ((ia.Flags & ANIMATION_FLAGS.AF_FOUND) != 0)
+                if ((flags & ANIMATION_FLAGS.AF_FOUND) != 0)
                 {
-                    type = ia.Type;
+                    type = AnimationsLoader.Instance.GetAnimType(mobile.Graphic);
                 }
 
                 if (type == ANIMATION_GROUPS_TYPE.MONSTER)
@@ -1535,7 +1535,7 @@ namespace ClassicUO.Game.GameObjects
 
                         case 3:
 
-                            if ((ia.Flags & ANIMATION_FLAGS.AF_UNKNOWN_1) != 0)
+                            if ((flags & ANIMATION_FLAGS.AF_UNKNOWN_1) != 0)
                             {
                                 return 12;
                             }
@@ -1615,7 +1615,7 @@ namespace ClassicUO.Game.GameObjects
                 }
 
 
-                if ((ia.Flags & ANIMATION_FLAGS.AF_USE_2_IF_HITTED_WHILE_RUNNING) != 0)
+                if ((flags & ANIMATION_FLAGS.AF_USE_2_IF_HITTED_WHILE_RUNNING) != 0)
                 {
                     return 2;
                 }
@@ -1634,12 +1634,12 @@ namespace ClassicUO.Game.GameObjects
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static byte GetObjectNewAnimationType_1_2(Mobile mobile, ushort action, byte mode)
         {
-            IndexAnimation ia = AnimationsLoader.Instance.DataIndex[mobile.Graphic];
+            ANIMATION_FLAGS flags = AnimationsLoader.Instance.GetAnimFlags(mobile.Graphic);
             ANIMATION_GROUPS_TYPE type = ANIMATION_GROUPS_TYPE.MONSTER;
 
-            if ((ia.Flags & ANIMATION_FLAGS.AF_FOUND) != 0)
+            if ((flags & ANIMATION_FLAGS.AF_FOUND) != 0)
             {
-                type = ia.Type;
+                type = AnimationsLoader.Instance.GetAnimType(mobile.Graphic);
             }
 
             if (type != ANIMATION_GROUPS_TYPE.MONSTER)
@@ -1663,12 +1663,12 @@ namespace ClassicUO.Game.GameObjects
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static byte GetObjectNewAnimationType_3(Mobile mobile, ushort action, byte mode)
         {
-            IndexAnimation ia = AnimationsLoader.Instance.DataIndex[mobile.Graphic];
+            ANIMATION_FLAGS flags = AnimationsLoader.Instance.GetAnimFlags(mobile.Graphic);
             ANIMATION_GROUPS_TYPE type = ANIMATION_GROUPS_TYPE.MONSTER;
 
-            if ((ia.Flags & ANIMATION_FLAGS.AF_FOUND) != 0)
+            if ((flags & ANIMATION_FLAGS.AF_FOUND) != 0)
             {
-                type = ia.Type;
+                type = AnimationsLoader.Instance.GetAnimType(mobile.Graphic);
             }
 
             if (type != ANIMATION_GROUPS_TYPE.MONSTER)
@@ -1707,12 +1707,12 @@ namespace ClassicUO.Game.GameObjects
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static byte GetObjectNewAnimationType_4(Mobile mobile, ushort action, byte mode)
         {
-            IndexAnimation ia = AnimationsLoader.Instance.DataIndex[mobile.Graphic];
+            ANIMATION_FLAGS flags = AnimationsLoader.Instance.GetAnimFlags(mobile.Graphic);
             ANIMATION_GROUPS_TYPE type = ANIMATION_GROUPS_TYPE.MONSTER;
 
-            if ((ia.Flags & ANIMATION_FLAGS.AF_FOUND) != 0)
+            if ((flags & ANIMATION_FLAGS.AF_FOUND) != 0)
             {
-                type = ia.Type;
+                type = AnimationsLoader.Instance.GetAnimType(mobile.Graphic);
             }
 
             if (type != ANIMATION_GROUPS_TYPE.MONSTER)
@@ -1741,12 +1741,12 @@ namespace ClassicUO.Game.GameObjects
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static byte GetObjectNewAnimationType_5(Mobile mobile, ushort action, byte mode)
         {
-            IndexAnimation ia = AnimationsLoader.Instance.DataIndex[mobile.Graphic];
+            ANIMATION_FLAGS flags = AnimationsLoader.Instance.GetAnimFlags(mobile.Graphic);
             ANIMATION_GROUPS_TYPE type = ANIMATION_GROUPS_TYPE.MONSTER;
 
-            if ((ia.Flags & ANIMATION_FLAGS.AF_FOUND) != 0)
+            if ((flags & ANIMATION_FLAGS.AF_FOUND) != 0)
             {
-                type = ia.Type;
+                type = AnimationsLoader.Instance.GetAnimType(mobile.Graphic);
             }
 
             if (type <= ANIMATION_GROUPS_TYPE.SEA_MONSTER)
@@ -1787,12 +1787,12 @@ namespace ClassicUO.Game.GameObjects
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static byte GetObjectNewAnimationType_6_14(Mobile mobile, ushort action, byte mode)
         {
-            IndexAnimation ia = AnimationsLoader.Instance.DataIndex[mobile.Graphic];
+            ANIMATION_FLAGS flags = AnimationsLoader.Instance.GetAnimFlags(mobile.Graphic);
             ANIMATION_GROUPS_TYPE type = ANIMATION_GROUPS_TYPE.MONSTER;
 
-            if ((ia.Flags & ANIMATION_FLAGS.AF_FOUND) != 0)
+            if ((flags & ANIMATION_FLAGS.AF_FOUND) != 0)
             {
-                type = ia.Type;
+                type = AnimationsLoader.Instance.GetAnimType(mobile.Graphic);
             }
 
             if (type != ANIMATION_GROUPS_TYPE.MONSTER)
@@ -1844,12 +1844,12 @@ namespace ClassicUO.Game.GameObjects
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static byte GetObjectNewAnimationType_8(Mobile mobile, ushort action, byte mode)
         {
-            IndexAnimation ia = AnimationsLoader.Instance.DataIndex[mobile.Graphic];
+            ANIMATION_FLAGS flags = AnimationsLoader.Instance.GetAnimFlags(mobile.Graphic);
             ANIMATION_GROUPS_TYPE type = ANIMATION_GROUPS_TYPE.MONSTER;
 
-            if ((ia.Flags & ANIMATION_FLAGS.AF_FOUND) != 0)
+            if ((flags & ANIMATION_FLAGS.AF_FOUND) != 0)
             {
-                type = ia.Type;
+                type = AnimationsLoader.Instance.GetAnimType(mobile.Graphic);
             }
 
             if (type != ANIMATION_GROUPS_TYPE.MONSTER)
@@ -1871,33 +1871,50 @@ namespace ClassicUO.Game.GameObjects
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static byte GetObjectNewAnimationType_9_10(Mobile mobile, ushort action, byte mode)
+        private static byte GetObjectNewAnimationType_9(Mobile mobile, ushort action, byte mode)
         {
-            IndexAnimation ia = AnimationsLoader.Instance.DataIndex[mobile.Graphic];
+            ANIMATION_FLAGS flags = AnimationsLoader.Instance.GetAnimFlags(mobile.Graphic);
             ANIMATION_GROUPS_TYPE type = ANIMATION_GROUPS_TYPE.MONSTER;
 
-            if ((ia.Flags & ANIMATION_FLAGS.AF_FOUND) != 0)
+            if ((flags & ANIMATION_FLAGS.AF_FOUND) != 0)
             {
-                type = ia.Type;
+                type = AnimationsLoader.Instance.GetAnimType(mobile.Graphic);
             }
 
             if (type != ANIMATION_GROUPS_TYPE.MONSTER)
             {
                 if (mobile.IsGargoyle)
                 {
-                    if (mobile.IsFlying)
+                    if (action == 0)
                     {
-                        if (action == 0)
-                        {
-                            return 60;
-                        }
+                        return 60;
                     }
-                    else
+                }
+
+                return 0xFF;
+            }
+
+            return 20;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static byte GetObjectNewAnimationType_10(Mobile mobile, ushort action, byte mode)
+        {
+            ANIMATION_FLAGS flags = AnimationsLoader.Instance.GetAnimFlags(mobile.Graphic);
+            ANIMATION_GROUPS_TYPE type = ANIMATION_GROUPS_TYPE.MONSTER;
+
+            if ((flags & ANIMATION_FLAGS.AF_FOUND) != 0)
+            {
+                type = AnimationsLoader.Instance.GetAnimType(mobile.Graphic);
+            }
+
+            if (type != ANIMATION_GROUPS_TYPE.MONSTER)
+            {
+                if (mobile.IsGargoyle)
+                {
+                    if (action == 0)
                     {
-                        if (action == 0)
-                        {
-                            return 61;
-                        }
+                        return 61;
                     }
                 }
 
@@ -1910,12 +1927,12 @@ namespace ClassicUO.Game.GameObjects
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static byte GetObjectNewAnimationType_11(Mobile mobile, ushort action, byte mode)
         {
-            IndexAnimation ia = AnimationsLoader.Instance.DataIndex[mobile.Graphic];
+            ANIMATION_FLAGS flags = AnimationsLoader.Instance.GetAnimFlags(mobile.Graphic);
             ANIMATION_GROUPS_TYPE type = ANIMATION_GROUPS_TYPE.MONSTER;
 
-            if ((ia.Flags & ANIMATION_FLAGS.AF_FOUND) != 0)
+            if ((flags & ANIMATION_FLAGS.AF_FOUND) != 0)
             {
-                type = ia.Type;
+                type = AnimationsLoader.Instance.GetAnimType(mobile.Graphic);
             }
 
             if (type != ANIMATION_GROUPS_TYPE.MONSTER)

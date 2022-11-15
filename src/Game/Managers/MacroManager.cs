@@ -42,6 +42,7 @@ using ClassicUO.Game.Data;
 using ClassicUO.Game.GameObjects;
 using ClassicUO.Game.Scenes;
 using ClassicUO.Game.UI.Gumps;
+using ClassicUO.Input;
 using ClassicUO.Network;
 using ClassicUO.Resources;
 using ClassicUO.Utility;
@@ -318,6 +319,40 @@ namespace ClassicUO.Game.Managers
             while (obj != null)
             {
                 if (obj.Key == key && obj.Alt == alt && obj.Ctrl == ctrl && obj.Shift == shift)
+                {
+                    break;
+                }
+
+                obj = (Macro) obj.Next;
+            }
+
+            return obj;
+        }
+
+        public Macro FindMacro(MouseButtonType button, bool alt, bool ctrl, bool shift)
+        {
+            Macro obj = (Macro) Items;
+
+            while (obj != null)
+            {
+                if (obj.MouseButton == button && obj.Alt == alt && obj.Ctrl == ctrl && obj.Shift == shift)
+                {
+                    break;
+                }
+
+                obj = (Macro) obj.Next;
+            }
+
+            return obj;
+        }
+
+        public Macro FindMacro(bool wheelUp, bool alt, bool ctrl, bool shift)
+        {
+            Macro obj = (Macro) Items;
+
+            while (obj != null)
+            {
+                if (obj.WheelScroll == true && obj.WheelUp == wheelUp && obj.Alt == alt && obj.Ctrl == ctrl && obj.Shift == shift)
                 {
                     break;
                 }
@@ -1013,7 +1048,7 @@ namespace ClassicUO.Game.Managers
                         //}
                         //else 
 
-                        if (TargetManager.TargetingState != CursorTarget.Object)
+                        if (TargetManager.TargetingState != CursorTarget.Object && !TargetManager.LastTargetInfo.IsEntity)
                         {
                             TargetManager.TargetLast();
                         }
@@ -1064,7 +1099,7 @@ namespace ClassicUO.Game.Managers
                     int handIndex = 1 - (macro.SubCode - MacroSubType.LeftHand);
                     GameScene gs = Client.Game.GetScene<GameScene>();
 
-                    if (handIndex < 0 || handIndex > 1 || ItemHold.Enabled)
+                    if (handIndex < 0 || handIndex > 1 || Client.Game.GameCursor.ItemHold.Enabled)
                     {
                         break;
                     }
@@ -1096,7 +1131,7 @@ namespace ClassicUO.Game.Managers
 
                             GameActions.DropItem
                             (
-                                ItemHold.Serial,
+                                Client.Game.GameCursor.ItemHold.Serial,
                                 0xFFFF,
                                 0xFFFF,
                                 0,
@@ -1462,12 +1497,12 @@ namespace ClassicUO.Game.Managers
                             break;
 
                         case MacroSubType.ZoomIn:
-                            --Client.Game.Scene.Camera.ZoomIndex;
+                            Client.Game.Scene.Camera.ZoomIn();
 
                             break;
 
                         case MacroSubType.ZoomOut:
-                            ++Client.Game.Scene.Camera.ZoomIndex;
+                            Client.Game.Scene.Camera.ZoomOut();
 
                             break;
                     }
@@ -1519,6 +1554,170 @@ namespace ClassicUO.Game.Managers
 
                     break;
 
+                case MacroType.UseObject:
+                    Item obj;
+
+                    switch (macro.SubCode)
+                    {
+                        case MacroSubType.BestHealPotion:
+                            Span<int> healpotion_clilocs = stackalloc int[3] { 1041330, 1041329, 1041329 };
+
+                            obj = World.Player.FindPreferredItemByCliloc(healpotion_clilocs);
+
+                            if (obj != null)
+                            {
+                                GameActions.DoubleClick(obj);
+                            }
+
+                            break;
+
+                        case MacroSubType.BestCurePotion:
+                            Span<int> curepotion_clilocs = stackalloc int[3] { 1041317, 1041316, 1041315 };
+
+                            obj = World.Player.FindPreferredItemByCliloc(curepotion_clilocs);
+
+                            if (obj != null)
+                            {
+                                GameActions.DoubleClick(obj);
+                            }
+
+                            break;
+
+                        case MacroSubType.BestRefreshPotion:
+                            Span<int> refreshpotion_clilocs = stackalloc int[2] { 1041327, 1041326 };
+
+                            obj = World.Player.FindPreferredItemByCliloc(refreshpotion_clilocs);
+
+                            if (obj != null)
+                            {
+                                GameActions.DoubleClick(obj);
+                            }
+
+                            break;
+
+                        case MacroSubType.BestStrengthPotion:
+                            Span<int> strpotion_clilocs = stackalloc int[2] { 1041321, 1041320 };
+
+                            obj = World.Player.FindPreferredItemByCliloc(strpotion_clilocs);
+
+                            if (obj != null)
+                            {
+                                GameActions.DoubleClick(obj);
+                            }
+
+                            break;
+
+                        case MacroSubType.BestAgiPotion:
+                            Span<int> agipotion_clilocs = stackalloc int[2] { 1041319, 1041318 };
+
+                            obj = World.Player.FindPreferredItemByCliloc(agipotion_clilocs);
+
+                            if (obj != null)
+                            {
+                                GameActions.DoubleClick(obj);
+                            }
+
+                            break;
+
+                        case MacroSubType.BestExplosionPotion:
+                            Span<int> explopotion_clilocs = stackalloc int[3] { 1041333, 1041332, 1041331 };
+
+                            obj = World.Player.FindPreferredItemByCliloc(explopotion_clilocs);
+
+                            if (obj != null)
+                            {
+                                GameActions.DoubleClick(obj);
+                            }
+
+                            break;
+
+                        case MacroSubType.BestConflagPotion:
+                            Span<int> conflagpotion_clilocs = stackalloc int[2] { 1072098, 1072095 };
+
+                            obj = World.Player.FindPreferredItemByCliloc(conflagpotion_clilocs);
+
+                            if (obj != null)
+                            {
+                                GameActions.DoubleClick(obj);
+                            }
+
+                            break;
+
+                        case MacroSubType.HealStone:
+                            obj = World.Player.FindItemByCliloc(1095376);
+
+                            if (obj != null)
+                            {
+                                GameActions.DoubleClick(obj);
+                            }
+
+                            break;
+
+                        case MacroSubType.SpellStone:
+                            obj = World.Player.FindItemByCliloc(1095377);
+
+                            if (obj != null)
+                            {
+                                GameActions.DoubleClick(obj);
+                            }
+
+                            break;
+
+                        case MacroSubType.EnchantedApple:
+                            obj = World.Player.FindItemByCliloc(1032248);
+
+                            if (obj != null)
+                            {
+                                GameActions.DoubleClick(obj);
+                            }
+
+                            break;
+
+                        case MacroSubType.PetalsOfTrinsic:
+                            obj = World.Player.FindItemByCliloc(1062926);
+
+                            if (obj != null)
+                            {
+                                GameActions.DoubleClick(obj);
+                            }
+
+                            break;
+
+                        case MacroSubType.OrangePetals:
+                            obj = World.Player.FindItemByCliloc(1053122);
+
+                            if (obj != null)
+                            {
+                                GameActions.DoubleClick(obj);
+                            }
+
+                            break;
+
+                        case MacroSubType.SmokeBomb:
+                            obj = World.Player.FindItemByGraphic(0x2808);
+
+                            if (obj != null)
+                            {
+                                GameActions.DoubleClick(obj);
+                            }
+
+                            break;
+
+                        case MacroSubType.TrappedBox:
+                            Span<int> trapbox_clilocs = stackalloc int[7] { 1015093, 1022473, 1044309, 1022474, 1023709, 1027808, 1027809 };
+
+                            obj = World.Player.FindPreferredItemByCliloc(trapbox_clilocs);
+
+                            if (obj != null)
+                            {
+                                GameActions.DoubleClick(obj);
+                            }
+
+                            break;
+                    }
+
+                    break;
+
                 case MacroType.CloseAllHealthBars:
 
                     //Includes HealthBarGump/HealthBarGumpCustom
@@ -1532,6 +1731,44 @@ namespace ClassicUO.Game.Managers
                         }
                     }
 
+                    break;
+
+                case MacroType.CloseInactiveHealthBars:
+                    IEnumerable<BaseHealthBarGump> inactiveHealthBarGumps = UIManager.Gumps.OfType<BaseHealthBarGump>().Where(hb => hb.IsInactive);
+
+                    foreach (var healthbar in inactiveHealthBarGumps)
+                    {
+                        if (healthbar.LocalSerial == World.Player) continue;
+
+                        if (UIManager.AnchorManager[healthbar] != null)
+                        {
+                            UIManager.AnchorManager[healthbar].DetachControl(healthbar);
+                        }
+
+                        healthbar.Dispose();
+                    }
+                    break;
+
+                case MacroType.CloseCorpses:
+                    var gridLootType = ProfileManager.CurrentProfile?.GridLootType; // 0 = none, 1 = only grid, 2 = both
+                    if (gridLootType == 0 || gridLootType == 2)
+                    {
+                        IEnumerable<ContainerGump> containerGumps = UIManager.Gumps.OfType<ContainerGump>().Where(cg => cg.Graphic == ContainerGump.CORPSES_GUMP);
+
+                        foreach (var containerGump in containerGumps)
+                        {
+                            containerGump.Dispose();
+                        }
+                    }
+                    if (gridLootType == 1 || gridLootType == 2)
+                    {
+                        IEnumerable<GridLootGump> gridLootGumps = UIManager.Gumps.OfType<GridLootGump>();
+
+                        foreach (var gridLootGump in gridLootGumps)
+                        {
+                            gridLootGump.Dispose();
+                        }
+                    }
                     break;
 
                 case MacroType.ToggleDrawRoofs:
@@ -1607,6 +1844,23 @@ namespace ClassicUO.Game.Managers
             Shift = shift;
         }
 
+        public Macro(string name, MouseButtonType button, bool alt, bool ctrl, bool shift) : this(name)
+        {
+            MouseButton = button;
+            Alt = alt;
+            Ctrl = ctrl;
+            Shift = shift;
+        }
+
+        public Macro(string name, bool wheelUp, bool alt, bool ctrl, bool shift) : this(name)
+        {
+            WheelScroll = true;
+            WheelUp = wheelUp;
+            Alt = alt;
+            Ctrl = ctrl;
+            Shift = shift;
+        }
+
         public Macro(string name)
         {
             Name = name;
@@ -1615,6 +1869,9 @@ namespace ClassicUO.Game.Managers
         public string Name { get; }
 
         public SDL.SDL_Keycode Key { get; set; }
+        public MouseButtonType MouseButton { get; set; }
+        public bool WheelScroll { get; set; }
+        public bool WheelUp { get; set; }
         public bool Alt { get; set; }
         public bool Ctrl { get; set; }
         public bool Shift { get; set; }
@@ -1658,6 +1915,9 @@ namespace ClassicUO.Game.Managers
             writer.WriteStartElement("macro");
             writer.WriteAttributeString("name", Name);
             writer.WriteAttributeString("key", ((int) Key).ToString());
+            writer.WriteAttributeString("mousebutton", ((int) MouseButton).ToString());
+            writer.WriteAttributeString("wheelscroll", WheelScroll.ToString());
+            writer.WriteAttributeString("wheelup", WheelUp.ToString());
             writer.WriteAttributeString("alt", Alt.ToString());
             writer.WriteAttributeString("ctrl", Ctrl.ToString());
             writer.WriteAttributeString("shift", Shift.ToString());
@@ -1695,6 +1955,21 @@ namespace ClassicUO.Game.Managers
             Alt = bool.Parse(xml.GetAttribute("alt"));
             Ctrl = bool.Parse(xml.GetAttribute("ctrl"));
             Shift = bool.Parse(xml.GetAttribute("shift"));
+
+            if (xml.HasAttribute("mousebutton"))
+            {
+                MouseButton = (MouseButtonType) int.Parse(xml.GetAttribute("mousebutton"));
+            }
+
+            if (xml.HasAttribute("wheelscroll"))
+            {
+                WheelScroll = bool.Parse(xml.GetAttribute("wheelscroll"));
+            }
+
+            if (xml.HasAttribute("wheelup"))
+            {
+                WheelUp = bool.Parse(xml.GetAttribute("wheelup"));
+            }
 
             XmlElement actions = xml["actions"];
 
@@ -1789,7 +2064,7 @@ namespace ClassicUO.Game.Managers
             Macro macro = new Macro
             (
                 name,
-                0,
+                (SDL.SDL_Keycode) 0,
                 false,
                 false,
                 false
@@ -1807,7 +2082,7 @@ namespace ClassicUO.Game.Managers
             Macro macro = new Macro
               (
                   name,
-                  0,
+                  (SDL.SDL_Keycode) 0,
                   false,
                   false,
                   false
@@ -1882,6 +2157,12 @@ namespace ClassicUO.Game.Managers
                     count = 1 + MacroSubType.ZoomOut - MacroSubType.DefaultZoom;
 
                     break;
+
+                case MacroType.UseObject:
+                    offset = (int) MacroSubType.BestHealPotion;
+                    count = 1 + MacroSubType.SpellStone - MacroSubType.BestHealPotion;
+
+                    break;
             }
         }
     }
@@ -1910,6 +2191,7 @@ namespace ClassicUO.Game.Managers
                 case MacroType.SelectNearest:
                 case MacroType.UsePotion:
                 case MacroType.Zoom:
+                case MacroType.UseObject:
 
                     if (sub == MacroSubType.MSC_NONE)
                     {
@@ -2043,7 +2325,10 @@ namespace ClassicUO.Game.Managers
         ToggleDrawRoofs,
         ToggleTreeStumps,
         ToggleVegetation,
-        ToggleCaveTiles
+        ToggleCaveTiles,
+        CloseInactiveHealthBars,
+        CloseCorpses,
+        UseObject
     }
 
     internal enum MacroSubType
@@ -2278,6 +2563,21 @@ namespace ClassicUO.Game.Managers
 
         DefaultZoom,
         ZoomIn,
-        ZoomOut
+        ZoomOut,
+
+        BestHealPotion,
+        BestCurePotion,
+        BestRefreshPotion,
+        BestStrengthPotion,
+        BestAgiPotion,
+        BestExplosionPotion,
+        BestConflagPotion,
+        EnchantedApple,
+        PetalsOfTrinsic,
+        OrangePetals,
+        TrappedBox,
+        SmokeBomb,
+        HealStone,
+        SpellStone
     }
 }

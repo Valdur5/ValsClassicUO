@@ -229,7 +229,6 @@ namespace ClassicUO.Configuration
         public bool ShowStatsChangedMessage { get; set; } = true;
 
 
-        public int FilterType { get; set; } = 0;
         public bool ShadowsEnabled { get; set; } = true;
         public bool ShadowsStatics { get; set; } = true;
         public int TerrainShadowsLevel { get; set; } = 15;
@@ -294,6 +293,7 @@ namespace ClassicUO.Configuration
         public bool WorldMapShowParty { get; set; } = true;
         public int WorldMapZoomIndex { get; set; } = 4;
         public bool WorldMapShowCoordinates { get; set; } = true;
+        public bool WorldMapShowMouseCoordinates { get; set; } = true;
         public bool WorldMapShowMobiles { get; set; } = true;
         public bool WorldMapShowPlayerName { get; set; } = true;
         public bool WorldMapShowPlayerBar { get; set; } = true;
@@ -303,6 +303,8 @@ namespace ClassicUO.Configuration
         public bool WorldMapShowMarkersNames { get; set; } = true;
         public bool WorldMapShowMultis { get; set; } = true;
         public string WorldMapHiddenMarkerFiles { get; set; } = string.Empty;
+        public string WorldMapHiddenZoneFiles { get; set; } = string.Empty;
+        public bool WorldMapShowGridIfZoomed { get; set; } = true;
 
 
         public static uint GumpsVersion { get; private set; }

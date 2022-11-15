@@ -397,9 +397,8 @@ namespace ClassicUO.Game.UI.Gumps.CharCreation
             CharacterListFlags flags = World.ClientFeatures.Flags;
             LockedFeatureFlags locks = World.ClientLockedFeatures.Flags;
 
-            bool allowElf = (flags & CharacterListFlags.CLF_ELVEN_RACE) != 0 && (locks & LockedFeatureFlags.MondainsLegacy) != 0;
-
-            bool allowGarg = (locks & LockedFeatureFlags.StygianAbyss) != 0;
+            bool allowElf = (flags & CharacterListFlags.CLF_ELVEN_RACE) != 0 && locks.HasFlag(LockedFeatureFlags.ML);
+            bool allowGarg = locks.HasFlag(LockedFeatureFlags.SA);
 
             if (race == RaceType.ELF && !allowElf)
             {
@@ -602,7 +601,7 @@ namespace ClassicUO.Game.UI.Gumps.CharCreation
                 1
             );
 
-            _paperDoll.Update();
+            _paperDoll.RequestUpdate();
         }
 
         private void AddCustomColorPicker
@@ -678,21 +677,21 @@ namespace ClassicUO.Game.UI.Gumps.CharCreation
                 _character.Hue = e.SelectedHue;
             }
 
-            _paperDoll.Update();
+            _paperDoll.RequestUpdate();
         }
 
         private void Facial_OnOptionSelected(object sender, int e)
         {
             CurrentOption[Layer.Beard] = e;
             UpdateEquipments();
-            _paperDoll.Update();
+            _paperDoll.RequestUpdate();
         }
 
         private void Hair_OnOptionSelected(object sender, int e)
         {
             CurrentOption[Layer.Hair] = e;
             UpdateEquipments();
-            _paperDoll.Update();
+            _paperDoll.RequestUpdate();
         }
 
         public override void OnButtonClick(int buttonID)

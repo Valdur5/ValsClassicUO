@@ -36,6 +36,8 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Json;
 using System.Threading.Tasks;
 using System.Xml;
 using ClassicUO.Configuration;
@@ -61,6 +63,7 @@ namespace ClassicUO.Game.UI.Gumps
     {
         private static Point _last_position = new Point(100, 100);
         private Point _center, _lastScroll, _mouseCenter;
+        private Point? _lastMousePosition = null;
 
         private bool _flipMap = true;
         private bool _freeView;
@@ -76,6 +79,9 @@ namespace ClassicUO.Game.UI.Gumps
         private int _mapIndex;
         private bool _mapMarkersLoaded;
 
+        private List<string> _hiddenZoneFiles;
+        private ZoneSets _zoneSets = new ZoneSets();
+
         private static Texture2D _mapTexture;
         private static uint[] _pixelBuffer;
         private static sbyte[] _zBuffer;
@@ -88,6 +94,7 @@ namespace ClassicUO.Game.UI.Gumps
 
         private readonly Dictionary<string, ContextMenuItemEntry> _options = new Dictionary<string, ContextMenuItemEntry>();
         private bool _showCoordinates;
+        private bool _showMouseCoordinates;
         private bool _showGroupBar = true;
         private bool _showGroupName = true;
         private bool _showMarkerIcons = true;
@@ -99,10 +106,12 @@ namespace ClassicUO.Game.UI.Gumps
         private bool _showPlayerBar = true;
         private bool _showPlayerName = true;
         private int _zoomIndex = 4;
+        private bool _showGridIfZoomed = true;
 
         private WMapMarker _gotoMarker;
 
         private readonly float[] _zooms = new float[10] { 0.125f, 0.25f, 0.5f, 0.75f, 1f, 1.5f, 2f, 4f, 6f, 8f };
+        private readonly Color _semiTransparentWhiteForGrid = new Color(255, 255, 255, 56);
 
         public WorldMapGump() : base
         (
@@ -128,8 +137,7 @@ namespace ClassicUO.Game.UI.Gumps
             OnResize();
 
             LoadMarkers();
-
-            World.WMapManager.SetEnable(true);
+            LoadZones();
 
             BuildGump();
         }
@@ -142,7 +150,12 @@ namespace ClassicUO.Game.UI.Gumps
             get => _isTopMost;
             set
             {
-                _isTopMost = value;
+                if (_isTopMost != value)
+                {
+                    _isTopMost = value;
+
+                    SaveSettings();            
+                }
 
                 ShowBorder = !_isTopMost;
 
@@ -155,12 +168,16 @@ namespace ClassicUO.Game.UI.Gumps
             get => _freeView;
             set
             {
-                _freeView = value;
-
-                if (!_freeView)
+                if (_freeView != value)
                 {
-                    _isScrolling = false;
-                    CanMove = true;
+                    _freeView = value;
+                    SaveSettings();
+
+                    if (!_freeView)
+                    {
+                        _isScrolling = false;
+                        CanMove = true;
+                    }
                 }
             }
         }
@@ -182,9 +199,7 @@ namespace ClassicUO.Game.UI.Gumps
 
             ResizeWindow(new Point(Width, Height));
 
-            _flipMap = ProfileManager.CurrentProfile.WorldMapFlipMap;
-            TopMost = ProfileManager.CurrentProfile.WorldMapTopMost;
-            FreeView = ProfileManager.CurrentProfile.WorldMapFreeView;
+            _flipMap = ProfileManager.CurrentProfile.WorldMapFlipMap;    
             _showPartyMembers = ProfileManager.CurrentProfile.WorldMapShowParty;
 
             World.WMapManager.SetEnable(_showPartyMembers);
@@ -192,6 +207,7 @@ namespace ClassicUO.Game.UI.Gumps
             _zoomIndex = ProfileManager.CurrentProfile.WorldMapZoomIndex;
 
             _showCoordinates = ProfileManager.CurrentProfile.WorldMapShowCoordinates;
+            _showMouseCoordinates = ProfileManager.CurrentProfile.WorldMapShowMouseCoordinates;
             _showMobiles = ProfileManager.CurrentProfile.WorldMapShowMobiles;
 
             _showPlayerName = ProfileManager.CurrentProfile.WorldMapShowPlayerName;
@@ -204,6 +220,11 @@ namespace ClassicUO.Game.UI.Gumps
 
 
             _hiddenMarkerFiles = string.IsNullOrEmpty(ProfileManager.CurrentProfile.WorldMapHiddenMarkerFiles) ? new List<string>() : ProfileManager.CurrentProfile.WorldMapHiddenMarkerFiles.Split(',').ToList();
+            _hiddenZoneFiles = string.IsNullOrEmpty(ProfileManager.CurrentProfile.WorldMapHiddenZoneFiles) ? new List<string>() : ProfileManager.CurrentProfile.WorldMapHiddenZoneFiles.Split(',').ToList();
+
+            _showGridIfZoomed = ProfileManager.CurrentProfile.WorldMapShowGridIfZoomed;
+            TopMost = ProfileManager.CurrentProfile.WorldMapTopMost;
+            FreeView = ProfileManager.CurrentProfile.WorldMapFreeView;
         }
 
         public void SaveSettings()
@@ -225,6 +246,7 @@ namespace ClassicUO.Game.UI.Gumps
             ProfileManager.CurrentProfile.WorldMapZoomIndex = _zoomIndex;
 
             ProfileManager.CurrentProfile.WorldMapShowCoordinates = _showCoordinates;
+            ProfileManager.CurrentProfile.WorldMapShowMouseCoordinates = _showMouseCoordinates;
             ProfileManager.CurrentProfile.WorldMapShowMobiles = _showMobiles;
 
             ProfileManager.CurrentProfile.WorldMapShowPlayerName = _showPlayerName;
@@ -236,6 +258,9 @@ namespace ClassicUO.Game.UI.Gumps
             ProfileManager.CurrentProfile.WorldMapShowMarkersNames = _showMarkerNames;
 
             ProfileManager.CurrentProfile.WorldMapHiddenMarkerFiles = string.Join(",", _hiddenMarkerFiles);
+            ProfileManager.CurrentProfile.WorldMapHiddenZoneFiles = string.Join(",", _hiddenZoneFiles);
+
+            ProfileManager.CurrentProfile.WorldMapShowGridIfZoomed = _showGridIfZoomed;
         }
 
         private bool ParseBool(string boolStr)
@@ -252,13 +277,10 @@ namespace ClassicUO.Game.UI.Gumps
         {
             _options.Clear();
 
-            _options["show_all_markers"] = new ContextMenuItemEntry(ResGumps.ShowAllMarkers, () => { _showMarkers = !_showMarkers; }, true, _showMarkers);
-
-            _options["show_marker_names"] = new ContextMenuItemEntry(ResGumps.ShowMarkerNames, () => { _showMarkerNames = !_showMarkerNames; }, true, _showMarkerNames);
-
-            _options["show_marker_icons"] = new ContextMenuItemEntry(ResGumps.ShowMarkerIcons, () => { _showMarkerIcons = !_showMarkerIcons; }, true, _showMarkerIcons);
-
-            _options["flip_map"] = new ContextMenuItemEntry(ResGumps.FlipMap, () => { _flipMap = !_flipMap; }, true, _flipMap);
+            _options["show_all_markers"] = new ContextMenuItemEntry(ResGumps.ShowAllMarkers, () => { _showMarkers = !_showMarkers; SaveSettings(); }, true, _showMarkers);
+            _options["show_marker_names"] = new ContextMenuItemEntry(ResGumps.ShowMarkerNames, () => { _showMarkerNames = !_showMarkerNames; SaveSettings(); }, true, _showMarkerNames);
+            _options["show_marker_icons"] = new ContextMenuItemEntry(ResGumps.ShowMarkerIcons, () => { _showMarkerIcons = !_showMarkerIcons; SaveSettings(); }, true, _showMarkerIcons);
+            _options["flip_map"] = new ContextMenuItemEntry(ResGumps.FlipMap, () => { _flipMap = !_flipMap; SaveSettings(); }, true, _flipMap);
 
             _options["goto_location"] = new ContextMenuItemEntry
             (
@@ -336,24 +358,27 @@ namespace ClassicUO.Game.UI.Gumps
                     _showPartyMembers = !_showPartyMembers;
 
                     World.WMapManager.SetEnable(_showPartyMembers);
+                    SaveSettings();
                 },
                 true,
                 _showPartyMembers
             );
 
-            _options["show_mobiles"] = new ContextMenuItemEntry(ResGumps.ShowMobiles, () => { _showMobiles = !_showMobiles; }, true, _showMobiles);
+            _options["show_mobiles"] = new ContextMenuItemEntry(ResGumps.ShowMobiles, () => { _showMobiles = !_showMobiles; SaveSettings(); }, true, _showMobiles);
 
-            _options["show_multis"] = new ContextMenuItemEntry(ResGumps.ShowHousesBoats, () => { _showMultis = !_showMultis; }, true, _showMultis);
+            _options["show_multis"] = new ContextMenuItemEntry(ResGumps.ShowHousesBoats, () => { _showMultis = !_showMultis; SaveSettings(); }, true, _showMultis);
 
-            _options["show_your_name"] = new ContextMenuItemEntry(ResGumps.ShowYourName, () => { _showPlayerName = !_showPlayerName; }, true, _showPlayerName);
+            _options["show_your_name"] = new ContextMenuItemEntry(ResGumps.ShowYourName, () => { _showPlayerName = !_showPlayerName; SaveSettings(); }, true, _showPlayerName);
 
-            _options["show_your_healthbar"] = new ContextMenuItemEntry(ResGumps.ShowYourHealthbar, () => { _showPlayerBar = !_showPlayerBar; }, true, _showPlayerBar);
+            _options["show_your_healthbar"] = new ContextMenuItemEntry(ResGumps.ShowYourHealthbar, () => { _showPlayerBar = !_showPlayerBar; SaveSettings(); }, true, _showPlayerBar);
 
-            _options["show_party_name"] = new ContextMenuItemEntry(ResGumps.ShowGroupName, () => { _showGroupName = !_showGroupName; }, true, _showGroupName);
+            _options["show_party_name"] = new ContextMenuItemEntry(ResGumps.ShowGroupName, () => { _showGroupName = !_showGroupName; SaveSettings(); }, true, _showGroupName);
 
-            _options["show_party_healthbar"] = new ContextMenuItemEntry(ResGumps.ShowGroupHealthbar, () => { _showGroupBar = !_showGroupBar; }, true, _showGroupBar);
+            _options["show_party_healthbar"] = new ContextMenuItemEntry(ResGumps.ShowGroupHealthbar, () => { _showGroupBar = !_showGroupBar; SaveSettings(); }, true, _showGroupBar);
 
-            _options["show_coordinates"] = new ContextMenuItemEntry(ResGumps.ShowYourCoordinates, () => { _showCoordinates = !_showCoordinates; }, true, _showCoordinates);
+            _options["show_coordinates"] = new ContextMenuItemEntry(ResGumps.ShowYourCoordinates, () => { _showCoordinates = !_showCoordinates; SaveSettings(); }, true, _showCoordinates);
+
+            _options["show_mouse_coordinates"] = new ContextMenuItemEntry(ResGumps.ShowMouseCoordinates, () => { _showMouseCoordinates = !_showMouseCoordinates; }, true, _showMouseCoordinates);
 
             _options["markers_manager"] = new ContextMenuItemEntry(ResGumps.MarkersManager,
                 () =>
@@ -365,8 +390,10 @@ namespace ClassicUO.Game.UI.Gumps
             );
 
             _options["add_marker_on_player"] = new ContextMenuItemEntry(ResGumps.AddMarkerOnPlayer, () => AddMarkerOnPlayer());
-
             _options["saveclose"] = new ContextMenuItemEntry(ResGumps.SaveClose, Dispose);
+
+            _options["show_grid_if_zoomed"] = new ContextMenuItemEntry(ResGumps.GridIfZoomed, () => { _showGridIfZoomed = !_showGridIfZoomed; SaveSettings();  }, true, _showGridIfZoomed);
+
         }
 
         public void GoToMarker(int x, int y, bool isManualType)
@@ -385,6 +412,57 @@ namespace ClassicUO.Game.UI.Gumps
 
             _center.X = x;
             _center.Y = y;
+        }
+
+        private void BuildContextMenuForZones(ContextMenuControl parent)
+        {
+            ContextMenuItemEntry zoneOptions = new ContextMenuItemEntry(ResGumps.MapZoneOptions);
+
+            zoneOptions.Add(_options["show_grid_if_zoomed"]);
+            zoneOptions.Add(new ContextMenuItemEntry(ResGumps.MapZoneReload, () => { LoadZones(); BuildContextMenu(); }));
+            zoneOptions.Add(new ContextMenuItemEntry(""));
+
+            if (_zoneSets.ZoneSetDict.Count < 1)
+            {
+                zoneOptions.Add(new ContextMenuItemEntry(ResGumps.MapZoneNone));
+            }
+            else
+            {
+                foreach (KeyValuePair<string, ZoneSet> entry in _zoneSets.ZoneSetDict)
+                {
+                    string filename = entry.Key;
+                    ZoneSet zoneSet = entry.Value;
+
+                    zoneOptions.Add
+                    (
+                        new ContextMenuItemEntry
+                        (
+                            String.Format(ResGumps.MapZoneFileName, zoneSet.NiceFileName),
+                            () => {
+                                zoneSet.Hidden = !zoneSet.Hidden;
+
+                                if (!zoneSet.Hidden)
+                                {
+                                    string hiddenFile = _hiddenZoneFiles.FirstOrDefault(x => x.Equals(filename));
+
+                                    if (!string.IsNullOrEmpty(hiddenFile))
+                                    {
+                                        _hiddenZoneFiles.Remove(hiddenFile);
+                                    }
+                                }
+                                else
+                                {
+                                    _hiddenZoneFiles.Add(filename);
+                                }
+                            },
+                            true,
+                            !entry.Value.Hidden
+                        )
+                    );
+                }
+            }
+
+            parent.Add(zoneOptions);
         }
 
         private void BuildContextMenu()
@@ -454,6 +532,8 @@ namespace ClassicUO.Game.UI.Gumps
 
             ContextMenu.Add(markersEntry);
 
+            BuildContextMenuForZones(ContextMenu);
+
             ContextMenuItemEntry namesHpBarEntry = new ContextMenuItemEntry(ResGumps.NamesHealthbars);
             namesHpBarEntry.Add(_options["show_your_name"]);
             namesHpBarEntry.Add(_options["show_your_healthbar"]);
@@ -472,6 +552,7 @@ namespace ClassicUO.Game.UI.Gumps
             ContextMenu.Add(_options["show_mobiles"]);
             ContextMenu.Add(_options["show_multis"]);
             ContextMenu.Add(_options["show_coordinates"]);
+            ContextMenu.Add(_options["show_mouse_coordinates"]);
             ContextMenu.Add("", null);
             ContextMenu.Add(_options["markers_manager"]);
             ContextMenu.Add(_options["add_marker_on_player"]);
@@ -482,9 +563,9 @@ namespace ClassicUO.Game.UI.Gumps
 
         #region Update
 
-        public override void Update(double totalTime, double frameTime)
+        public override void Update()
         {
-            base.Update(totalTime, frameTime);
+            base.Update();
 
             if (IsDisposed)
             {
@@ -564,6 +645,44 @@ namespace ClassicUO.Game.UI.Gumps
             newY = y;
         }
 
+        private void CanvasToWorld
+        (
+            int a_x,
+            int a_y,
+            out int out_x,
+            out int out_y
+        )
+        {
+            // Scale width to Zoom
+            var newWidth = Width / Zoom;
+            var newHeight = Height / Zoom;
+
+            // Scale mouse cords to Zoom
+            var newX = a_x / Zoom;
+            var newY = a_y / Zoom;
+
+            // Rotate Cords if map fliped
+            // x' = (x + y)/Sqrt(2)
+            // y' = (y - x)/Sqrt(2)
+            if (_flipMap)
+            {
+                var nw = (newWidth + newHeight) / 1.41f;
+                var nh = (newHeight - newWidth) / 1.41f;
+                newWidth = (int)nw;
+                newHeight = (int)nh;
+
+                var nx = (newX + newY) / 1.41f;
+                var ny = (newY - newX) / 1.41f;
+                newX = (int)nx;
+                newY = (int)ny;
+            }
+
+            // Calulate Click cords to Map Cords
+            // (x,y) = MapCenter - ScaeldMapWidth/2 + ScaledMouseCords
+            out_x = _center.X - (int)(newWidth / 2) + (int)newX;
+            out_y = _center.Y - (int)(newHeight / 2) + (int)newY;
+        }
+
         private int GetOffset(int x, int y, int centerX, int centerY)
         {
             const int offset = 0;
@@ -596,7 +715,7 @@ namespace ClassicUO.Game.UI.Gumps
             SaveSettings();
             World.WMapManager.SetEnable(false);
 
-            UIManager.GameCursor.IsDraggingCursorForced = false;
+            Client.Game.GameCursor.IsDraggingCursorForced = false;
 
             base.Dispose();
         }
@@ -1453,6 +1572,164 @@ namespace ClassicUO.Game.UI.Gumps
             );
         }
 
+        [DataContract]
+        internal class ZonesFileZoneData
+        {
+            [DataMember]
+            public string Label = null;
+
+            [DataMember]
+            public string Color = null;
+
+            [DataMember]
+            public List<List<int>> Polygon = null;
+        }
+
+        [DataContract]
+        internal class ZonesFile
+        {
+            [DataMember]
+            public int MapIndex;
+
+            [DataMember]
+            public List<ZonesFileZoneData> Zones;
+        }
+
+        private class Zone {
+            public string Label;
+            public Color Color;
+            public Rectangle BoundingRectangle;
+            public List<Point> Vertices;
+
+            public Zone(ZonesFileZoneData data)
+            {
+                Label = data.Label;
+                Color = _colorMap[data.Color];
+
+                Vertices = new List<Point>();
+
+                int xmin = int.MaxValue;
+                int xmax = int.MinValue;
+                int ymin = int.MaxValue;
+                int ymax = int.MinValue;
+
+                foreach (List<int> rawPoint in data.Polygon)
+                {
+                    Point p = new Point(rawPoint[0], rawPoint[1]);
+
+                    if (p.X < xmin) xmin = p.X;
+                    if (p.X > xmax) xmax = p.X;
+                    if (p.Y < ymin) ymin = p.Y;
+                    if (p.Y > ymax) ymax = p.Y;
+
+                    Vertices.Add(p);
+                }
+
+                BoundingRectangle = new Rectangle(xmin, ymin, xmax - xmin, ymax - ymin);
+            }
+        }
+
+        private class ZoneSet
+        {
+            public int MapIndex;
+            public List<Zone> Zones = new List<Zone>();
+            public bool Hidden = false;
+            public string NiceFileName;
+
+            public ZoneSet(ZonesFile zf, string filename, bool hidden)
+            {
+                MapIndex = zf.MapIndex;
+                foreach (ZonesFileZoneData data in zf.Zones)
+                {
+                    Zones.Add(new Zone(data));
+                }
+
+                Hidden = hidden;
+                NiceFileName = MakeNiceFileName(filename);
+            }
+
+            public static string MakeNiceFileName(string filename)
+            {
+                // Yes, we invoke the same method twice, because our filenames have two layers of extension
+                // we want to strip off (.zones.json)
+                return Path.GetFileNameWithoutExtension(Path.GetFileNameWithoutExtension(filename));
+            }
+        }
+
+        private class ZoneSets
+        {
+            public Dictionary<string, ZoneSet> ZoneSetDict = new Dictionary<string, ZoneSet>();
+
+            public void AddZoneSetByFileName(string filename, bool hidden)
+            {
+                FileStream fs = new FileStream(filename, FileMode.Open, FileAccess.Read);
+                DataContractJsonSerializer ser = new DataContractJsonSerializer(typeof(ZonesFile));
+                ZonesFile zf = null;
+
+                try
+                {
+                    zf = (ZonesFile) ser.ReadObject(fs);
+                }
+                catch (Exception ee)
+                {
+                    Log.Error($"{ee}");
+                }
+                finally
+                {
+                    fs.Dispose();
+                }
+
+                if (!(zf is null))
+                {
+                    ZoneSetDict[filename] = new ZoneSet(zf, filename, hidden);
+                    GameActions.Print(String.Format(ResGumps.MapZoneFileLoaded, ZoneSetDict[filename].NiceFileName), 0x3A /* yellow green */);
+                }
+            }
+
+            public IEnumerable<Zone> GetZonesForMapIndex(int mapIndex)
+            {
+                foreach (KeyValuePair<string, ZoneSet> entry in ZoneSetDict)
+                {
+                    if (entry.Value.MapIndex != mapIndex)
+                        continue;
+                    else if (entry.Value.Hidden)
+                        continue;
+
+                    foreach (Zone zone in entry.Value.Zones)
+                    {
+                        yield return zone;
+                    }
+                }
+            }
+
+            public void Clear()
+            {
+                ZoneSetDict.Clear();
+            }
+        }
+
+        private void LoadZones()
+        {
+            Log.Trace("LoadZones()...");
+
+            _zoneSets.Clear();
+
+            foreach (String filename in Directory.GetFiles(_mapFilesPath, "*.zones.json"))
+            {
+                bool shouldHide = !string.IsNullOrEmpty
+                (
+                    _hiddenZoneFiles.FirstOrDefault(x => x.Contains(filename))
+                );
+
+                _zoneSets.AddZoneSetByFileName(filename, shouldHide);
+            }
+        }
+
+        private bool ShouldDrawGrid()
+        {
+            return (_showGridIfZoomed && Zoom >= 4);
+        }
+
         private void LoadMarkers()
         {
             //return Task.Run(() =>
@@ -1913,6 +2190,7 @@ namespace ClassicUO.Game.UI.Gumps
                     DrawAll
                     (
                         batcher,
+                        srcRect,
                         gX,
                         gY,
                         halfWidth,
@@ -1935,8 +2213,16 @@ namespace ClassicUO.Game.UI.Gumps
             return base.Draw(batcher, x, y);
         }
 
-        private void DrawAll(UltimaBatcher2D batcher, int gX, int gY, int halfWidth, int halfHeight)
+        private void DrawAll(UltimaBatcher2D batcher, Rectangle srcRect, int gX, int gY, int halfWidth, int halfHeight)
         {
+            foreach (Zone zone in _zoneSets.GetZonesForMapIndex(World.MapIndex))
+            {
+                if (zone.BoundingRectangle.Intersects(srcRect))
+                {
+                    DrawZone(batcher, zone, gX, gY, halfWidth, halfHeight, Zoom);
+                }
+            }
+
             if (_showMultis)
             {
                 foreach (House house in World.HouseManager.Houses)
@@ -2177,6 +2463,10 @@ namespace ClassicUO.Game.UI.Gumps
                 _showPlayerBar
             );
 
+            if (ShouldDrawGrid())
+            {
+                DrawGrid(batcher, srcRect, gX, gY, halfWidth, halfHeight, Zoom);
+            }
 
             if (_showCoordinates)
             {
@@ -2199,6 +2489,41 @@ namespace ClassicUO.Game.UI.Gumps
                     $"{World.Player.X}, {World.Player.Y} ({World.Player.Z}) [{_zoomIndex}]",
                     gX + 5,
                     gY + 5,
+                    hueVector
+                );
+            }
+
+            if (_showMouseCoordinates && _lastMousePosition != null)
+            {
+
+                int mouseWorldX;
+                int mouseWorldY;
+                CanvasToWorld(_lastMousePosition.Value.X, _lastMousePosition.Value.Y, out mouseWorldX, out mouseWorldY);
+
+                string mouseCoordinateString = $"{mouseWorldX} {mouseWorldY}";
+                Vector2 size = Fonts.Regular.MeasureString(mouseCoordinateString);
+                int mx = gX + 5;
+                int my = gY + Height - (int)Math.Ceiling(size.Y) - 15;
+
+                Vector3 hueVector = new Vector3(0f, 1f, 1f);
+
+                batcher.DrawString
+                (
+                    Fonts.Bold,
+                    mouseCoordinateString,
+                    mx + 1,
+                    my + 1,
+                    hueVector
+                );
+
+                hueVector = ShaderHueTranslator.GetHueVector(0);
+
+                batcher.DrawString
+                (
+                    Fonts.Bold,
+                    mouseCoordinateString,
+                    mx,
+                    my,
                     hueVector
                 );
             }
@@ -2592,6 +2917,90 @@ namespace ClassicUO.Game.UI.Gumps
             );
         }
 
+        private Vector2 WorldPointToGumpPoint(int wpx, int wpy, int x, int y, int width, int height, float zoom)
+        {
+            int sx = wpx - _center.X;
+            int sy = wpy - _center.Y;
+
+            Point rot = RotatePoint
+            (
+                sx,
+                sy,
+                zoom,
+                1,
+                _flipMap ? 45f : 0f
+            );
+
+            /* N.B. You don't want AdjustPosition() here if you want to draw rects
+             * that extend beyond the gump's viewport without distoring them. */
+
+            rot.X += x + width;
+            rot.Y += y + height;
+
+            return new Vector2(rot.X, rot.Y);
+        }
+
+        private void DrawZone
+        (
+            UltimaBatcher2D batcher,
+            Zone zone,
+            int x,
+            int y,
+            int width,
+            int height,
+            float zoom
+        )
+        {
+            Vector3 hueVector = ShaderHueTranslator.GetHueVector(0);
+            Texture2D texture = SolidColorTextureCache.GetTexture(zone.Color);
+
+            for (int i = 0, j = 1; i < zone.Vertices.Count; i++, j++)
+            {
+                if (j >= zone.Vertices.Count) j = 0;
+
+                Vector2 start = WorldPointToGumpPoint(zone.Vertices[i].X, zone.Vertices[i].Y, x, y, width, height, zoom);
+                Vector2 end = WorldPointToGumpPoint(zone.Vertices[j].X, zone.Vertices[j].Y, x, y, width, height, zoom);
+
+                batcher.DrawLine(texture, start, end, hueVector, 1);
+            }
+        }
+
+        private void DrawGrid
+        (
+            UltimaBatcher2D batcher,
+            Rectangle srcRect,
+            int x,
+            int y,
+            int width,
+            int height,
+            float zoom
+        )
+        {
+            const int GRID_SKIP = 8;
+            Vector3 hueVector = ShaderHueTranslator.GetHueVector(0);
+            Texture2D colorTexture = SolidColorTextureCache.GetTexture(_semiTransparentWhiteForGrid);
+
+            batcher.SetBlendState(BlendState.Additive);
+
+            for (int worldY = (srcRect.Y / GRID_SKIP) * GRID_SKIP; worldY < srcRect.Y + srcRect.Height; worldY += GRID_SKIP)
+            {
+                Vector2 start = WorldPointToGumpPoint(srcRect.X, worldY, x, y, width, height, zoom);
+                Vector2 end = WorldPointToGumpPoint(srcRect.X + srcRect.Width, worldY, x, y, width, height, zoom);
+
+                batcher.DrawLine(colorTexture, start, end, hueVector, 1);
+            }
+
+            for (int worldX = (srcRect.X / GRID_SKIP) * GRID_SKIP; worldX < srcRect.X + srcRect.Width; worldX += GRID_SKIP)
+            {
+                Vector2 start = WorldPointToGumpPoint(worldX, srcRect.Y, x, y, width, height, zoom);
+                Vector2 end = WorldPointToGumpPoint(worldX, srcRect.Y + srcRect.Height, x, y, width, height, zoom);
+
+                batcher.DrawLine(colorTexture, start, end, hueVector, 1);
+            }
+
+            batcher.SetBlendState(null);
+        }
+
         private void DrawWMEntity
         (
             UltimaBatcher2D batcher,
@@ -2824,14 +3233,14 @@ namespace ClassicUO.Game.UI.Gumps
                 CanMove = true;
             }
 
-            UIManager.GameCursor.IsDraggingCursorForced = false;
+            Client.Game.GameCursor.IsDraggingCursorForced = false;
 
             base.OnMouseUp(x, y, button);
         }
 
         protected override void OnMouseDown(int x, int y, MouseButtonType button)
         {
-            if (!ItemHold.Enabled)
+            if (!Client.Game.GameCursor.ItemHold.Enabled)
             {
                 if (button == MouseButtonType.Left && (Keyboard.Alt || _freeView) || button == MouseButtonType.Middle)
                 {
@@ -2847,40 +3256,13 @@ namespace ClassicUO.Game.UI.Gumps
                         _isScrolling = true;
                         CanMove = false;
 
-                        UIManager.GameCursor.IsDraggingCursorForced = true;
+                        Client.Game.GameCursor.IsDraggingCursorForced = true;
                     }
                 }
 
                 if (button == MouseButtonType.Left && Keyboard.Ctrl)
                 {
-                    // Scale width to Zoom
-                    var newWidth = Width / Zoom;
-                    var newHeight = Height / Zoom;
-
-                    // Scale mouse cords to Zoom
-                    var newX = x / Zoom;
-                    var newY = y / Zoom;
-
-                    // Rotate Cords if map fliped
-                    // x' = (x + y)/Sqrt(2)
-                    // y' = (y - x)/Sqrt(2)
-                    if (_flipMap)
-                    {
-                        var nw = (newWidth + newHeight) / 1.41f;
-                        var nh = (newHeight - newWidth) / 1.41f;
-                        newWidth = (int)nw;
-                        newHeight = (int)nh;
-
-                        var nx = (newX + newY) / 1.41f;
-                        var ny = (newY - newX) / 1.41f;
-                        newX = (int)nx;
-                        newY = (int)ny;
-                    }
-
-                    // Calulate Click cords to Map Cords
-                    // (x,y) = MapCenter - ScaeldMapWidth/2 + ScaledMouseCords
-                    _mouseCenter.X = _center.X - (int)(newWidth / 2) + (int)newX;
-                    _mouseCenter.Y = _center.Y - (int)(newHeight / 2) + (int)newY;
+                    CanvasToWorld(x, y, out _mouseCenter.X, out _mouseCenter.Y);
 
                     // Check if file is loaded and contain markers
                     var userFile = _markerFiles.Where(f => f.Name == USER_MARKERS_FILE).FirstOrDefault();
@@ -2902,6 +3284,8 @@ namespace ClassicUO.Game.UI.Gumps
 
         protected override void OnMouseOver(int x, int y)
         {
+            _lastMousePosition = new Point(x, y);
+
             Point offset = Mouse.LButtonPressed ? Mouse.LDragOffset : Mouse.MButtonPressed ? Mouse.MDragOffset : Point.Zero;
 
             if (_isScrolling && offset != Point.Zero)
@@ -2991,6 +3375,12 @@ namespace ClassicUO.Game.UI.Gumps
             TopMost = !TopMost;
 
             return true;
+        }
+
+        protected override void OnMouseExit(int x, int y)
+        {
+            _lastMousePosition = null;
+            base.OnMouseExit(x, y);
         }
 
         protected override void OnMove(int x, int y)
