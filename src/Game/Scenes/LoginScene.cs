@@ -656,18 +656,24 @@ namespace ClassicUO.Game.Scenes
                 _autoLogin = false;
             }
 
-            string lastCharName = LastCharacterManager.GetLastCharacter(Account, World.ServerName);
+            LastCharacterInfo lastCharInfo = LastCharacterManager.GetLastCharacter(Account, World.ServerName);
 
             for (byte i = 0; i < Characters.Length; i++)
             {
-                if (Characters[i] != null && Characters[i].RawName.Length > 0)
+                if (Characters[i] != null)
                 {
                     haveAnyCharacter = true;
 
-                    if (Characters[i].RawName == lastCharName)
+                    if (lastCharInfo.Serial != 0)
+                    {
+                        if(Characters[i].Serial == lastCharInfo.Serial){
+                            charToSelect = i;
+                            break;
+                        }
+                    }
+                    else if (Characters[i].RawName.Length > 0 && Characters[i].RawName == lastCharInfo.LastCharacterName)
                     {
                         charToSelect = i;
-
                         break;
                     }
                 }

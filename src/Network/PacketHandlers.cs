@@ -749,9 +749,9 @@ namespace ClassicUO.Network
             uint serial = p.ReadUInt32BE();
             if (ProfileManager.CurrentProfile == null)
             {
-                string lastChar = LastCharacterManager.GetLastCharacter(LoginScene.Account, World.ServerName);
-                LastCharacterManager.Save(LoginScene.Account, World.ServerName, lastChar, serial);
-                ProfileManager.Load(World.ServerName, LoginScene.Account, lastChar);
+                LastCharacterInfo lastCharInfo = LastCharacterManager.GetLastCharacter(LoginScene.Account, World.ServerName);
+                LastCharacterManager.Save(LoginScene.Account, World.ServerName, lastCharInfo.LastCharacterName, serial);
+                ProfileManager.Load(World.ServerName, LoginScene.Account, lastCharInfo.LastCharacterName);
             }
 
             if (World.Player != null)

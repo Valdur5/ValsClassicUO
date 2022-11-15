@@ -61,9 +61,13 @@ namespace ClassicUO.Game.UI.Gumps.Login
             int listTitleY = 106;
 
             LoginScene loginScene = Client.Game.GetScene<LoginScene>();
-            
-            string lastCharName = LastCharacterManager.GetLastCharacter(LoginScene.Account, World.ServerName);
-            string lastSelected = loginScene.Characters.FirstOrDefault(o => o.RawName == lastCharName).RawName;
+            string lastSelected;
+            LastCharacterInfo lastCharInfo = LastCharacterManager.GetLastCharacter(LoginScene.Account, World.ServerName);
+            if(lastCharInfo != null && lastCharInfo.Serial != 0) {
+                lastSelected = loginScene.Characters.FirstOrDefault(o => o.Serial == lastCharInfo.Serial).RawName;
+            } else {
+                lastSelected = loginScene.Characters.FirstOrDefault(o => o.RawName == lastCharInfo.LastCharacterName).RawName;
+            }
 
             LockedFeatureFlags f = World.ClientLockedFeatures.Flags;
             CharacterListFlags ff = World.ClientFeatures.Flags;
