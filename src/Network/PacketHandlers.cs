@@ -742,8 +742,14 @@ namespace ClassicUO.Network
         }
 
         private static void EnterWorld(ref StackDataReader p)
-        {         
+        {
             uint serial = p.ReadUInt32BE();
+            if (ProfileManager.CurrentProfile == null)
+            {
+                LastCharacterInfo lastCharInfo = LastCharacterManager.GetLastCharacter(LoginScene.Account, World.ServerName);
+                LastCharacterManager.Save(LoginScene.Account, World.ServerName, lastCharInfo.LastCharacterName, serial);
+                ProfileManager.Load(World.ServerName, LoginScene.Account, lastCharInfo.LastCharacterName);
+            }
 
             World.CreatePlayer(serial);
               

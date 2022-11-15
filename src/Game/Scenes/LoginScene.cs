@@ -84,7 +84,9 @@ namespace ClassicUO.Game.Scenes
         public LoginSteps CurrentLoginStep { get; set; } = LoginSteps.Main;
         public ServerListEntry[] Servers { get; private set; }
         public CityInfo[] Cities { get; set; }
-        public string[] Characters { get; private set; }
+
+        public Character[] Characters { get; private set; }
+
         public string PopupMessage { get; set; }
         public byte ServerIndex { get; private set; }
         public static string Account { get; internal set; }
@@ -418,10 +420,11 @@ namespace ClassicUO.Game.Scenes
         {
             if (CurrentLoginStep == LoginSteps.CharacterSelection)
             {
-                LastCharacterManager.Save(Account, World.ServerName, Characters[index]);
+                Character c = Characters[Convert.ToInt32(index)];
+                LastCharacterManager.Save(Account, World.ServerName, c.RawName, c.Serial);
 
                 CurrentLoginStep = LoginSteps.EnteringBritania;
-                NetClient.Socket.Send_SelectCharacter(index, Characters[index], NetClient.Socket.LocalIP);
+                NetClient.Socket.Send_SelectCharacter(c.Serial,c.RawName, NetClient.Socket.LocalIP);
             }
         }
 
@@ -439,7 +442,7 @@ namespace ClassicUO.Game.Scenes
 
             for (; i < Characters.Length; i++)
             {
-                if (string.IsNullOrEmpty(Characters[i]))
+                if (Characters[i] == null || string.IsNullOrEmpty(Characters[i].RawName))
                 {
                     break;
                 }
@@ -457,11 +460,11 @@ namespace ClassicUO.Game.Scenes
             CurrentLoginStep = LoginSteps.CharacterCreationDone;
         }
 
-        public void DeleteCharacter(uint index)
+        public void DeleteCharacter(uint serial)
         {
             if (CurrentLoginStep == LoginSteps.CharacterSelection)
             {
-                NetClient.Socket.Send_DeleteCharacter((byte)index, NetClient.Socket.LocalIP);
+                NetClient.Socket.Send_DeleteCharacter(serial, NetClient.Socket.LocalIP);
             }
         }
 
@@ -656,18 +659,24 @@ namespace ClassicUO.Game.Scenes
                 _autoLogin = false;
             }
 
-            string lastCharName = LastCharacterManager.GetLastCharacter(Account, World.ServerName);
+            LastCharacterInfo lastCharInfo = LastCharacterManager.GetLastCharacter(Account, World.ServerName);
 
             for (byte i = 0; i < Characters.Length; i++)
             {
-                if (Characters[i].Length > 0)
+                if (Characters[i] != null)
                 {
                     haveAnyCharacter = true;
 
-                    if (Characters[i] == lastCharName)
+                    if (lastCharInfo.Serial != 0)
+                    {
+                        if(Characters[i].Serial == lastCharInfo.Serial){
+                            charToSelect = i;
+                            break;
+                        }
+                    }
+                    else if (Characters[i].RawName.Length > 0 && Characters[i].RawName == lastCharInfo.LastCharacterName)
                     {
                         charToSelect = i;
-
                         break;
                     }
                 }
@@ -728,13 +737,16 @@ namespace ClassicUO.Game.Scenes
         private void ParseCharacterList(ref StackDataReader p)
         {
             int count = p.ReadUInt8();
-            Characters = new string[count];
+            Characters = new Character[count];
 
             for (ushort i = 0; i < count; i++)
             {
-                Characters[i] = p.ReadASCII(30).TrimEnd('\0');
-
-                p.Skip(30);
+                Character c = new Character
+                {
+                    RawName = p.ReadASCII(30).TrimEnd('\0'),
+                    Serial = p.ReadUInt32BE()
+                };
+                Characters[i] = c;
             }
         }
 
