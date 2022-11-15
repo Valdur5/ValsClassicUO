@@ -457,11 +457,11 @@ namespace ClassicUO.Game.Scenes
             CurrentLoginStep = LoginSteps.CharacterCreationDone;
         }
 
-        public void DeleteCharacter(uint index)
+        public void DeleteCharacter(uint serial)
         {
             if (CurrentLoginStep == LoginSteps.CharacterSelection)
             {
-                NetClient.Socket.Send_DeleteCharacter((byte)index, NetClient.Socket.LocalIP);
+                NetClient.Socket.Send_DeleteCharacter(serial, NetClient.Socket.LocalIP);
             }
         }
 

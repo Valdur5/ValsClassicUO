@@ -474,7 +474,7 @@ namespace ClassicUO.Network
             writer.Dispose();
         }
 
-        public static void Send_DeleteCharacter(this NetClient socket, byte index, uint ipclient)
+        public static void Send_DeleteCharacter(this NetClient socket, uint serial, uint ipclient)
         {
             const byte ID = 0x83;
 
@@ -489,7 +489,7 @@ namespace ClassicUO.Network
             }
 
             writer.WriteZero(30);
-            writer.WriteUInt32BE(index);
+            writer.WriteInt32BE(Convert.ToInt32(serial));
             writer.WriteUInt32BE(ipclient);
 
             if (length < 0)

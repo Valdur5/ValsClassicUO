@@ -64,9 +64,9 @@ namespace ClassicUO.Game.UI.Gumps.Login
             string lastSelected;
             LastCharacterInfo lastCharInfo = LastCharacterManager.GetLastCharacter(LoginScene.Account, World.ServerName);
             if(lastCharInfo != null && lastCharInfo.Serial != 0) {
-                lastSelected = loginScene.Characters.FirstOrDefault(o => o.Serial == lastCharInfo.Serial).RawName;
+                lastSelected = loginScene.Characters.FirstOrDefault(o => o.Serial == lastCharInfo.Serial)?.RawName ?? null;
             } else {
-                lastSelected = loginScene.Characters.FirstOrDefault(o => o.RawName == lastCharInfo.LastCharacterName).RawName;
+                lastSelected = loginScene.Characters.FirstOrDefault(o => o.RawName == lastCharInfo.LastCharacterName)?.RawName ?? null;
             }
 
             LockedFeatureFlags f = World.ClientLockedFeatures.Flags;
@@ -257,9 +257,9 @@ namespace ClassicUO.Game.UI.Gumps.Login
 
         private void DeleteCharacter(LoginScene loginScene)
         {
-            string charName = loginScene.Characters[_selectedCharacter].RawName;
+            Character character = loginScene.Characters[_selectedCharacter];
 
-            if (!string.IsNullOrEmpty(charName))
+            if (character != null && !string.IsNullOrEmpty(character.RawName))
             {
                 LoadingGump existing = Children.OfType<LoadingGump>().FirstOrDefault();
 
@@ -272,13 +272,13 @@ namespace ClassicUO.Game.UI.Gumps.Login
                 (
                     new LoadingGump
                     (
-                        string.Format(ResGumps.PermanentlyDelete0, charName),
+                        string.Format(ResGumps.PermanentlyDelete0, character.RawName),
                         LoginButtons.OK | LoginButtons.Cancel,
                         buttonID =>
                         {
                             if (buttonID == (int) LoginButtons.OK)
                             {
-                                loginScene.DeleteCharacter(_selectedCharacter);
+                                loginScene.DeleteCharacter(character.Serial);
                             }
                             else
                             {
